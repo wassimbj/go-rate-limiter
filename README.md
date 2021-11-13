@@ -37,4 +37,4 @@ result = type RLResult struct {
 
 ## Full example
 
-Go to **example.md**
+Go to **[example.md](https://github.com/wassimbj/go-rate-limiter/blob/master/example.md)**
