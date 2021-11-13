@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -22,7 +22,7 @@ func NewLock(rds *redis.Client) *Lock {
 func RandToken(n int) string {
 	rand.Seed(time.Now().UnixNano())
 
-	var letters = []rune("abcdefghijklmnopqrstuvwxyz-_:!$ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	var letters = []rune("abcdefghijklmnopqrstu1234567890vwxyz-_:!$ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 	b := make([]rune, n)
 
@@ -34,22 +34,22 @@ func RandToken(n int) string {
 }
 
 func (l *Lock) Acquire(ctx context.Context, lockname string, expiration time.Duration) string {
-	lockId := RandToken(7)
+	lockId := RandToken(10)
 	key := "lock:" + lockname
 	tick := time.NewTicker(time.Nanosecond * 10)
 
-	// try acquiring the lock until it times-out
+	// try acquiring the lock until it times-out or the key expire
 	for {
 		select {
-		case <-tick.C: // each 1ms try to acquire the lock
+		case <-time.After(time.Second * 10): // time out
+			return ""
+		case <-tick.C: // each 10ns try to acquire the lock
 			setnxCmd := l.redis.SetNX(ctx, key, lockId, expiration)
-			if ok, _ := setnxCmd.Result(); ok {
+			ok, _ := setnxCmd.Result()
+			if ok {
 				return lockId
 			}
 			continue
-		case <-time.After(time.Second * 10): // time out
-			fmt.Println("TIMED OUT ! GET OUT")
-			return ""
 		}
 	}
 }
@@ -57,11 +57,9 @@ func (l *Lock) Acquire(ctx context.Context, lockname string, expiration time.Dur
 func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 
 	key := "lock:" + lockname
-
 	txf := func(tx *redis.Tx) error {
+		getCmd := tx.Get(ctx, key)
 		_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-			getCmd := pipe.Get(ctx, key)
-
 			// delete the lock if its found
 			if getCmd.Val() == lockId {
 				pipe.Del(ctx, key)
@@ -77,6 +75,7 @@ func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 			return true
 		} else if err == redis.TxFailedErr {
 			// we lost the lock, retry !
+			log.Println("Key changed !!")
 			continue
 		} else {
 			return false
