@@ -1,3 +1,6 @@
+# Example using go-rate-limiter
+
+```go
 package main
 
 import (
@@ -7,21 +10,21 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
+	"github.com/tomasen/realip"
 	"github.com/go-redis/redis/v8"
 )
 
 func Login(res http.ResponseWriter, req *http.Request) {
 
 	// get user ip
-	// USER_IP := realip.FromRequest(req)
+	USER_IP := realip.FromRequest(req)
 
 	// call the rate limiter
 	rl, _ := RateLimiter(context.Background(), RLOpts{
 		Attempts: 10,
 		Prefix:   "login",
 		Duration: time.Hour * 5,
-		Id:       "USER_IP", // the id of the user who's making this request
+		Id:       USER_IP, // the id of the user who's making this request
 		RedisConfig: redis.Options{
 			Addr: "localhost:6379",
 		},
@@ -51,3 +54,4 @@ func main() {
 
 	http.ListenAndServe(":1234", nil)
 }
+```

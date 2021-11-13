@@ -5,7 +5,7 @@
 Token bucket algorithm:
 
 attempts = 10
-key = "rate:login:{USER_IDENTIFIER}" | USER_IDENTIFIER ∈ (ip, id, ...)
+key = "gorl:{PREFIX}:{USER_IDENTIFIER}" | USER_IDENTIFIER ∈ (ip, id, ...)
 duration = "1 hour"
 bucket = [] // this is redis
 
