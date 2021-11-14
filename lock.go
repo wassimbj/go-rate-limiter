@@ -71,7 +71,7 @@ func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 
 	for {
 		select {
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 20):
 			return false
 		default:
 			err := l.redis.Watch(ctx, txf, key)
