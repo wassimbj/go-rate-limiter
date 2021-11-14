@@ -16,9 +16,9 @@ func TestRateLimiter(t *testing.T) {
 		wg.Add(1)
 		go func(c int) {
 			_, err := RateLimiter(context.Background(), RLOpts{
-				Attempts: 50,
+				Attempts: 10,
 				Prefix:   "login",
-				Duration: time.Hour * 5,
+				Duration: time.Second * 30,
 				Id:       "A300",
 				RedisConfig: redis.Options{
 					Addr: "localhost:6379",
@@ -29,7 +29,7 @@ func TestRateLimiter(t *testing.T) {
 				t.Log(err)
 				t.Fail()
 			}
-			// fmt.Println(res.AttemptsLeft, "-", res.TimeLeft)
+			// fmt.Println(fmt.Sprintf("%d - %dms", res.AttemptsLeft, res.TimeLeft))
 
 			defer wg.Done()
 		}(j)

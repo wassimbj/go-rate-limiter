@@ -29,9 +29,9 @@ func getRedis(opts redis.Options) (*redis.Client, error) {
 
 type RLResult struct {
 	AttemptsLeft int
-	Used         int  // used attempts
-	TimeLeft     int  // time left until the bucket gets refilled, in seconds
-	Block        bool // should the user get blocked
+	Used         int   // used attempts
+	TimeLeft     int64 // in ms, time left until the bucket gets refilled
+	Block        bool  // should the user get blocked
 }
 
 func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
@@ -57,7 +57,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 	data := rds.Get(ctx, key)
 
 	attemptsLeft, _ := data.Int()
-	timeLeft := rds.TTL(ctx, key).Val()
+	timeLeft := rds.PTTL(ctx, key).Val()
 
 	// no data found, either the attempts expired or its the first time this user is making the request.
 	if attemptsLeft <= 0 && timeLeft < 0 {
@@ -71,7 +71,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 		return RLResult{
 			AttemptsLeft: attemptsLeft,
 			Used:         1,
-			TimeLeft:     int(opts.Duration),
+			TimeLeft:     opts.Duration.Milliseconds(),
 			Block:        false,
 		}, nil
 		// allow
@@ -81,7 +81,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 			return RLResult{
 				AttemptsLeft: 0,
 				Used:         opts.Attempts,
-				TimeLeft:     int(timeLeft.Seconds()),
+				TimeLeft:     timeLeft.Milliseconds(),
 				Block:        true,
 			}, nil
 		} else {
@@ -94,7 +94,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 			return RLResult{
 				AttemptsLeft: attemptsLeft,
 				Used:         opts.Attempts - attemptsLeft,
-				TimeLeft:     int(timeLeft.Seconds()),
+				TimeLeft:     timeLeft.Milliseconds(),
 				Block:        false,
 			}, nil
 		}
