@@ -11,12 +11,12 @@ import (
 type RLOpts struct {
 	Attempts    int
 	Prefix      string
-	Duration    time.Duration // in seconds
-	Id          string        // user identifier
+	Duration    time.Duration
+	Id          string // user identifier
 	RedisConfig redis.Options
 }
 
-func GetRedis(opts redis.Options) (*redis.Client, error) {
+func getRedis(opts redis.Options) (*redis.Client, error) {
 
 	rdb := redis.NewClient(&opts)
 
@@ -29,13 +29,13 @@ func GetRedis(opts redis.Options) (*redis.Client, error) {
 
 type RLResult struct {
 	AttemptsLeft int
-	Used         int           // used attempts
-	TimeLeft     time.Duration // time left until the bucket gets refilled
-	Block        bool          // should the user get blocked
+	Used         int  // used attempts
+	TimeLeft     int  // time left until the bucket gets refilled, in seconds
+	Block        bool // should the user get blocked
 }
 
 func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
-	rds, err := GetRedis(opts.RedisConfig)
+	rds, err := getRedis(opts.RedisConfig)
 
 	if err != nil {
 		// nohting
@@ -52,9 +52,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 
 	lock := NewLock(rds)
 	lockId := lock.Acquire(ctx, opts.Prefix, time.Second*2)
-	defer func() {
-		lock.Release(ctx, opts.Prefix, lockId)
-	}()
+	defer lock.Release(ctx, opts.Prefix, lockId)
 
 	data := rds.Get(ctx, key)
 
@@ -73,7 +71,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 		return RLResult{
 			AttemptsLeft: attemptsLeft,
 			Used:         1,
-			TimeLeft:     opts.Duration,
+			TimeLeft:     int(opts.Duration),
 			Block:        false,
 		}, nil
 		// allow
@@ -83,7 +81,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 			return RLResult{
 				AttemptsLeft: 0,
 				Used:         opts.Attempts,
-				TimeLeft:     time.Duration(timeLeft.Seconds()),
+				TimeLeft:     int(timeLeft.Seconds()),
 				Block:        true,
 			}, nil
 		} else {
@@ -96,7 +94,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 			return RLResult{
 				AttemptsLeft: attemptsLeft,
 				Used:         opts.Attempts - attemptsLeft,
-				TimeLeft:     time.Duration(timeLeft.Seconds()),
+				TimeLeft:     int(timeLeft.Seconds()),
 				Block:        false,
 			}, nil
 		}

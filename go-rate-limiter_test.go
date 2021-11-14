@@ -29,7 +29,7 @@ func TestRateLimiter(t *testing.T) {
 				t.Log(err)
 				t.Fail()
 			}
-			// fmt.Println(res)
+			// fmt.Println(res.AttemptsLeft, "-", res.TimeLeft)
 
 			defer wg.Done()
 		}(j)
@@ -47,7 +47,7 @@ func TestRandToken(t *testing.T) {
 }
 
 func TestLock(t *testing.T) {
-	rds, _ := GetRedis(redis.Options{
+	rds, _ := getRedis(redis.Options{
 		Addr: "localhost:6379",
 	})
 
