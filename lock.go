@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"time"
 
@@ -61,6 +60,7 @@ func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 		getCmd := tx.Get(ctx, key)
 		_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 			// delete the lock if its found
+			time.Sleep(time.Second * 30)
 			if getCmd.Val() == lockId {
 				pipe.Del(ctx, key)
 			}
@@ -70,15 +70,20 @@ func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 	}
 
 	for {
-		err := l.redis.Watch(ctx, txf, key)
-		if err == nil {
-			return true
-		} else if err == redis.TxFailedErr {
-			// we lost the lock, retry !
-			log.Println("Key changed !!")
-			continue
-		} else {
+		select {
+		case <-time.After(time.Second * 10):
 			return false
+		default:
+			err := l.redis.Watch(ctx, txf, key)
+			if err == nil {
+				return true
+			} else if err == redis.TxFailedErr {
+				// something wrong, we either lost the key or an unexpected thing happened, just try again
+				continue
+			} else {
+				return false
+			}
+
 		}
 	}
 
