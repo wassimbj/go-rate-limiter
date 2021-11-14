@@ -28,7 +28,7 @@ result, err := RateLimiter(context.Background(), RLOpts{
 result = type RLResult struct {
 	AttemptsLeft int
 	Used         int           // used attempts
-	TimeLeft     time.Duration // time left until the attempts gets renewed
+	TimeLeft     int           // time left until the attempts gets renewed, this is in seconds
 	Block        bool          // should the user get blocked
 }
 */
