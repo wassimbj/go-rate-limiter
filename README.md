@@ -34,6 +34,8 @@ result = type RLResult struct {
 */
 ```
 
+**Note:** the bucket(redis) is refilled with limit each time the duration ends, im not saving the last refill timestamp here maybe in near future.
+
 
 ## Full example
 
