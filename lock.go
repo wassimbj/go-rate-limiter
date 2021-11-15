@@ -36,11 +36,12 @@ func (l *Lock) Acquire(ctx context.Context, lockname string, expiration time.Dur
 	lockId := RandToken(10)
 	key := "lock:" + lockname
 	tick := time.NewTicker(time.Nanosecond * 10)
-
+	timer := time.NewTimer(time.Second * 10)
 	// try acquiring the lock until it times-out or the key expire
 	for {
 		select {
-		case <-time.After(time.Second * 10): // time out
+		case <-timer.C: // time out
+			timer.Stop()
 			return ""
 		case <-tick.C: // each 10ns try to acquire the lock
 			setnxCmd := l.redis.SetNX(ctx, key, lockId, expiration)
@@ -55,12 +56,12 @@ func (l *Lock) Acquire(ctx context.Context, lockname string, expiration time.Dur
 
 func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 
+	timer := time.NewTimer(time.Second * 50)
 	key := "lock:" + lockname
 	txf := func(tx *redis.Tx) error {
 		getCmd := tx.Get(ctx, key)
 		_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 			// delete the lock if its found
-			time.Sleep(time.Second * 30)
 			if getCmd.Val() == lockId {
 				pipe.Del(ctx, key)
 			}
@@ -71,7 +72,8 @@ func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 
 	for {
 		select {
-		case <-time.After(time.Second * 20):
+		case <-timer.C:
+			timer.Stop()
 			return false
 		default:
 			err := l.redis.Watch(ctx, txf, key)

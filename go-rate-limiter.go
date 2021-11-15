@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,18 +14,7 @@ type RLOpts struct {
 	Prefix      string
 	Duration    time.Duration
 	Id          string // user identifier
-	RedisConfig redis.Options
-}
-
-func getRedis(opts redis.Options) (*redis.Client, error) {
-
-	rdb := redis.NewClient(&opts)
-
-	if rdb.Ping(context.Background()).Err() != nil {
-		return nil, rdb.Ping(context.Background()).Err()
-	}
-
-	return rdb, nil
+	RedisClient *redis.Client
 }
 
 type RLResult struct {
@@ -35,33 +25,29 @@ type RLResult struct {
 }
 
 func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
-	rds, err := getRedis(opts.RedisConfig)
+	redisClient := opts.RedisClient
 
-	if err != nil {
-		// nohting
-		return RLResult{
-			AttemptsLeft: 0,
-			Used:         0,
-			TimeLeft:     0,
-			Block:        false,
-		}, err
+	if redisClient.Ping(ctx).Val() != "PONG" {
+		connErr := errors.New("REDIS CONNECTION ERROR ! " + redisClient.Ping(ctx).Err().Error())
+		return RLResult{}, connErr
 	}
 
 	// construct the key "gorl:{prefix}:{id}", prefix ∈ (login, signup...) && id is a unique one can be an IP, userId...
 	key := fmt.Sprintf("gorl:%s:%s", opts.Prefix, opts.Id)
+	lockName := fmt.Sprintf("%s:%s", opts.Prefix, opts.Id)
 
-	lock := NewLock(rds)
-	lockId := lock.Acquire(ctx, opts.Prefix, time.Second*2)
-	defer lock.Release(ctx, opts.Prefix, lockId)
+	lock := NewLock(redisClient)
+	lockId := lock.Acquire(ctx, lockName, time.Second*5)
+	defer lock.Release(ctx, lockName, lockId)
 
-	data := rds.Get(ctx, key)
+	data := redisClient.Get(ctx, key)
 
 	attemptsLeft, _ := data.Int()
-	timeLeft := rds.PTTL(ctx, key).Val()
+	timeLeft := redisClient.PTTL(ctx, key).Val()
 
 	// no data found, either the attempts expired or its the first time this user is making the request.
 	if attemptsLeft <= 0 && timeLeft < 0 {
-		setResult := rds.Set(ctx, key, opts.Attempts-1, opts.Duration)
+		setResult := redisClient.Set(ctx, key, opts.Attempts-1, opts.Duration)
 
 		if setResult.Err() != nil {
 			// log.Fatalf("INIT ERROR %s", setResult.Err().Error())
@@ -86,7 +72,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 			}, nil
 		} else {
 			// update the attempts left
-			decrCmd := rds.Decr(ctx, key)
+			decrCmd := redisClient.Decr(ctx, key)
 
 			attemptsLeft = int(decrCmd.Val())
 

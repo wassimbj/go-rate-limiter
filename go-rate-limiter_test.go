@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -9,27 +10,31 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+func RdsClient() *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr: "0.0.0.0:6379",
+	})
+}
+
 func TestRateLimiter(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for j := 0; j < 20; j++ {
 		wg.Add(1)
 		go func(c int) {
-			_, err := RateLimiter(context.Background(), RLOpts{
-				Attempts: 10,
-				Prefix:   "login",
-				Duration: time.Second * 30,
-				Id:       "A300",
-				RedisConfig: redis.Options{
-					Addr: "localhost:6379",
-				},
+			res, err := RateLimiter(context.Background(), RLOpts{
+				Attempts:    10,
+				Prefix:      "login",
+				Duration:    time.Second * 30,
+				Id:          "A300",
+				RedisClient: RdsClient(),
 			})
 
 			if err != nil {
 				t.Log(err)
 				t.Fail()
 			}
-			// fmt.Println(fmt.Sprintf("%d - %dms", res.AttemptsLeft, res.TimeLeft))
+			fmt.Println(fmt.Sprintf("%d - %dms", res.AttemptsLeft, res.TimeLeft))
 
 			defer wg.Done()
 		}(j)
@@ -46,21 +51,6 @@ func TestRandToken(t *testing.T) {
 	}
 }
 
-func TestLock(t *testing.T) {
-	rds, _ := getRedis(redis.Options{
-		Addr: "localhost:6379",
-	})
-
-	lock := NewLock(rds)
-	lockId := lock.Acquire(context.Background(), "test", time.Second*10)
-	if lockId == "" {
-		t.Fail()
-	}
-
-	lock.Release(context.Background(), "test", lockId)
-
-}
-
 func BenchmarkRateLimiter(b *testing.B) {
 	var wg sync.WaitGroup
 
@@ -68,14 +58,11 @@ func BenchmarkRateLimiter(b *testing.B) {
 		wg.Add(1)
 		go func(c int) {
 			RateLimiter(context.Background(), RLOpts{
-				Attempts: 100,
-				Prefix:   "login",
-				Duration: time.Hour * 5,
-				Id:       "A300",
-				RedisConfig: redis.Options{
-					Addr: "localhost:6379",
-					// Password: "",
-				},
+				Attempts:    100,
+				Prefix:      "login",
+				Duration:    time.Hour * 5,
+				Id:          "A300",
+				RedisClient: RdsClient(),
 			})
 
 			defer wg.Done()
