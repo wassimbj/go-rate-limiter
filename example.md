@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 	"github.com/tomasen/realip"
+	"github.com/wassimbj/gorl"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -20,7 +21,7 @@ func Login(res http.ResponseWriter, req *http.Request) {
 	USER_IP := realip.FromRequest(req)
 
 	// call the rate limiter
-	rl, _ := RateLimiter(context.Background(), RLOpts{
+	rl, _ := gorl.RateLimiter(context.Background(), gorl.RLOpts{
 		Attempts: 10,
 		Prefix:   "login",
 		Duration: time.Hour * 5,
