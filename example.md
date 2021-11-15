@@ -25,9 +25,9 @@ func Login(res http.ResponseWriter, req *http.Request) {
 		Prefix:   "login",
 		Duration: time.Hour * 5,
 		Id:       USER_IP, // the id of the user who's making this request
-		RedisConfig: redis.Options{
+		RedisClient: redis.NewClient(&redis.Options{
 			Addr: "localhost:6379",
-		},
+		}),
 	})
 
 	// check if the user should get blocked
