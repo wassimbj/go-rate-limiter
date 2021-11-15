@@ -1,4 +1,4 @@
-module github.com/wassimbj/go-rate-limiter
+module github.com/wassimbj/gorl
 
 go 1.17
 
