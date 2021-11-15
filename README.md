@@ -35,7 +35,7 @@ result, err := rl.RateLimiter(context.Background(), RLOpts{
    Prefix:   "login",
    Duration: time.Hour * 5, // limit duration
    Id:       "USER_IP",
-   RedisConfig: redis.NewClient(&redis.Options{
+   RedisClient: redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	}),
 })
