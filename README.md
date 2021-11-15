@@ -19,8 +19,10 @@ go get -d github.com/wassimbj/go-rate-limiter
 ## Usage
 
 ```go
+import rl "github.com/wassimbj/go-rate-limiter"
+
 // in this example, the user has the right to make only 50 requests in 5 hours. 
-result, err := RateLimiter(context.Background(), RLOpts{
+result, err := rl.RateLimiter(context.Background(), RLOpts{
    Attempts: 50, // requests limit
    Prefix:   "login",
    Duration: time.Hour * 5, // limit duration
