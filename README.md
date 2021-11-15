@@ -10,6 +10,12 @@
 - Flexible
 - Can handle concurrent requests
 
+## Install
+
+```bash
+go get -d github.com/wassimbj/go-rate-limiter
+```
+
 ## Usage
 
 ```go
