@@ -35,7 +35,7 @@ result, err := gorl.RateLimiter(context.Background(), gorl.RLOpts{
    Prefix:   "login",
    Duration: time.Hour * 5, // limit duration
    Id:       "USER_IP",
-	BlockDuration: time.Hour,
+   BlockDuration: time.Hour,
    RedisClient: redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	}),
