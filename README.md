@@ -29,12 +29,13 @@ type Result struct {
 	Block        bool          // should the user get blocked
 }
 
-// in this example, the user has the right to make only 50 requests in 5 hours. 
+// in this example, the user has the right to make only 50 requests in 5 hours.
 result, err := gorl.RateLimiter(context.Background(), gorl.RLOpts{
    Attempts: 50, // requests limit
    Prefix:   "login",
    Duration: time.Hour * 5, // limit duration
    Id:       "USER_IP",
+	BlockDuration: time.Hour,
    RedisClient: redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	}),
@@ -43,7 +44,6 @@ result, err := gorl.RateLimiter(context.Background(), gorl.RLOpts{
 ```
 
 **Note:** the bucket(redis) is refilled with limit each time the duration ends, im not saving the last refill timestamp here maybe in near future.
-
 
 ## Full example
 
