@@ -10,11 +10,12 @@ import (
 )
 
 type RLOpts struct {
-	Attempts    int
-	Prefix      string
-	Duration    time.Duration
-	Id          string // user identifier
-	RedisClient *redis.Client
+	Attempts      int
+	Prefix        string
+	Duration      time.Duration // N of attempts per duration
+	BlockDuration time.Duration // until the user can make another attempts
+	Id            string        // user identifier, can be an IP, userId...
+	RedisClient   *redis.Client
 }
 
 type RLResult struct {
@@ -32,9 +33,10 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 		return RLResult{}, connErr
 	}
 
-	// construct the key "gorl:{prefix}:{id}", prefix ∈ (login, signup...) && id is a unique one can be an IP, userId...
+	// construct the key "gorl:{prefix}:{id}", prefix ∈ (login, signup...) && id is a unique one, it can be an IP, userId...
 	key := fmt.Sprintf("gorl:%s:%s", opts.Prefix, opts.Id)
 	lockName := fmt.Sprintf("%s:%s", opts.Prefix, opts.Id)
+	blockedKey := fmt.Sprintf("gorl:isblocked:%s", lockName)
 
 	lock := NewLock(redisClient)
 	lockId := lock.Acquire(ctx, lockName, time.Second*5)
@@ -43,7 +45,7 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 	data := redisClient.Get(ctx, key)
 
 	attemptsLeft, _ := data.Int()
-	timeLeft := redisClient.PTTL(ctx, key).Val()
+	timeLeft := redisClient.PTTL(ctx, key).Val() // in milliseconds
 
 	// no data found, either the attempts expired or its the first time this user is making the request.
 	if attemptsLeft <= 0 && timeLeft < 0 {
@@ -64,6 +66,14 @@ func RateLimiter(ctx context.Context, opts RLOpts) (RLResult, error) {
 	} else {
 		if attemptsLeft <= 0 {
 			// block user
+			// here, we are saving the first time the user gets blocked,
+			// so that we don't keep updating the TTL again and again witht the same BlockDuration value.
+			isAlreadyBlocked, _ := redisClient.Get(ctx, blockedKey).Int()
+			if isAlreadyBlocked <= 0 {
+				redisClient.Set(ctx, blockedKey, 1, opts.BlockDuration)
+				redisClient.PExpire(ctx, key, opts.BlockDuration)
+			}
+
 			return RLResult{
 				AttemptsLeft: 0,
 				Used:         opts.Attempts,

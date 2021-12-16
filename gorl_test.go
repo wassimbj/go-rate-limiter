@@ -19,22 +19,23 @@ func RdsClient() *redis.Client {
 func TestRateLimiter(t *testing.T) {
 	var wg sync.WaitGroup
 
-	for j := 0; j < 20; j++ {
+	for j := 0; j < 50; j++ {
 		wg.Add(1)
 		go func(c int) {
 			res, err := RateLimiter(context.Background(), RLOpts{
-				Attempts:    10,
-				Prefix:      "login",
-				Duration:    time.Second * 30,
-				Id:          "A300",
-				RedisClient: RdsClient(),
+				Attempts:      5,
+				Prefix:        "login",
+				Duration:      time.Second * 30,
+				Id:            "wassim_ip",
+				BlockDuration: time.Hour,
+				RedisClient:   RdsClient(),
 			})
 
 			if err != nil {
 				t.Log(err)
 				t.Fail()
 			}
-			fmt.Println(fmt.Sprintf("%d - %dms", res.AttemptsLeft, res.TimeLeft))
+			fmt.Println(fmt.Sprintf("attempts left: %d -|-> time left: %dms", res.AttemptsLeft, res.TimeLeft))
 
 			defer wg.Done()
 		}(j)
@@ -58,11 +59,12 @@ func BenchmarkRateLimiter(b *testing.B) {
 		wg.Add(1)
 		go func(c int) {
 			RateLimiter(context.Background(), RLOpts{
-				Attempts:    100,
-				Prefix:      "login",
-				Duration:    time.Hour * 5,
-				Id:          "A300",
-				RedisClient: RdsClient(),
+				Attempts:      100,
+				Prefix:        "login",
+				Duration:      time.Hour * 5,
+				Id:            "A300",
+				BlockDuration: time.Hour,
+				RedisClient:   RdsClient(),
 			})
 
 			defer wg.Done()

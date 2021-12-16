@@ -48,3 +48,7 @@ result, err := gorl.RateLimiter(context.Background(), gorl.RLOpts{
 ## Full example
 
 Go to **[example.md](https://github.com/wassimbj/go-rate-limiter/blob/master/example.md)**
+
+## TODO
+
+:white_check_mark: Add block duration
