@@ -27,7 +27,7 @@ func TestRateLimiter(t *testing.T) {
 				Prefix:        "login",
 				Duration:      time.Second * 30,
 				Id:            "wassim_ip",
-				BlockDuration: time.Hour,
+				BlockDuration: time.Second * 10,
 				RedisClient:   RdsClient(),
 			})
 
