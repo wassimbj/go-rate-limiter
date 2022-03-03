@@ -35,7 +35,7 @@ func RandToken(n int) string {
 func (l *Lock) Acquire(ctx context.Context, lockname string, expiration time.Duration) string {
 	lockId := RandToken(10)
 	key := "lock:" + lockname
-	tick := time.NewTicker(time.Nanosecond * 10)
+	// tick := time.NewTicker(time.Nanosecond * 10)
 	timer := time.NewTimer(time.Second * 10)
 	// try acquiring the lock until it times-out or the key expire
 	for {
@@ -43,9 +43,9 @@ func (l *Lock) Acquire(ctx context.Context, lockname string, expiration time.Dur
 		case <-timer.C: // time out
 			timer.Stop()
 			return ""
-		case <-tick.C: // each 10ns try to acquire the lock
-			setnxCmd := l.redis.SetNX(ctx, key, lockId, expiration)
-			ok, _ := setnxCmd.Result()
+		default: // try to acquire the lock
+			setNxCmd := l.redis.SetNX(ctx, key, lockId, expiration)
+			ok, _ := setNxCmd.Result()
 			if ok {
 				return lockId
 			}
@@ -72,7 +72,7 @@ func (l *Lock) Release(ctx context.Context, lockname, lockId string) bool {
 
 	for {
 		select {
-		case <-timer.C:
+		case <-timer.C: // time out
 			timer.Stop()
 			return false
 		default:
